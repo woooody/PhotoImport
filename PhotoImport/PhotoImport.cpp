@@ -96,15 +96,20 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
+   HWND hBtn1;
 
    hInst = hInstance; // Store instance handle in our global variable
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
-   if (!hWnd)
+
+   hBtn1 = CreateWindow(L"button", L"Settings", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   300, 10, 80, 30, hWnd, (HMENU)IDM_SETTINGS, hInstance, NULL);
+
+   if (!hBtn1)
    {
-      return FALSE;
+	   return FALSE;
    }
 
    ShowWindow(hWnd, nCmdShow);
@@ -128,16 +133,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	int wmId, wmEvent;
 	PAINTSTRUCT ps;
 	HDC hdc;
-	TCHAR greeting[] = _T("Hello, World!");
+	RECT rect; // стр-ра, определ€юща€ размер клиентской области
+	COLORREF colorText = RGB(255, 0, 0); // задаЄм цвет текста
+	static int sec = 0;
+	static TCHAR greeting[10];
+	static char text[2] = { ' ', '\0' };
+
 
 	switch (message)
 	{
+	case WM_CREATE:
+		greeting[0] = '\0';
+
+		SetTimer(hWnd, 1, 1000, NULL);
+		//...
+		SetForegroundWindow(hWnd);
+		break;
+
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
 		wmEvent = HIWORD(wParam);
 		// Parse the menu selections:
+
 		switch (wmId)
 		{
+		case IDM_SETTINGS:
+			MessageBox(hWnd, L"Settings", L"", 0);
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
@@ -154,14 +176,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Here your application is laid out.
 		// For this introduction, we just print out "Hello, World!"
 		// in the top left corner.
+		
 		TextOut(hdc,
 			10, 10,
 			greeting, _tcslen(greeting));
 		// End application-specific layout section.
+		
+
+		GetClientRect(hWnd, &rect); // получаем ширину и высоту области дл€ рисовани€
+		SetTextColor(hdc, colorText); // устанавливаем цвет контекстного устройства
+		DrawText(hdc, (LPCWSTR)text, -1, &rect, DT_SINGLELINE | DT_CENTER | DT_VCENTER); // рисуем текст
 
 		EndPaint(hWnd, &ps);
 		break;
+
+	case WM_CHAR:
+		switch (wParam)
+		{
+		case VK_HOME:case VK_END:case VK_PRIOR:
+		case VK_NEXT:case VK_LEFT:case VK_RIGHT:
+		case VK_UP:case VK_DOWN:case VK_DELETE:
+		case VK_SHIFT:case VK_SPACE:case VK_CONTROL:
+		case VK_CAPITAL:case VK_MENU:case VK_TAB:
+		case VK_BACK:case VK_RETURN: case VK_ESCAPE:
+			break;
+		default:
+			text[0] = (char)wParam;
+			InvalidateRect(hWnd, NULL, TRUE);
+			break;
+		}
+		break;
+
+	case WM_TIMER:
+		sec++;
+		_itow_s(sec, greeting, 10);
+		InvalidateRect(hWnd, NULL, TRUE);
+		break;
+
 	case WM_DESTROY:
+//		MessageBox(NULL, greeting, L"¬рем€ работы программы (сек.):", MB_ICONASTERISK | MB_OK);
 		PostQuitMessage(0);
 		break;
 	default:
