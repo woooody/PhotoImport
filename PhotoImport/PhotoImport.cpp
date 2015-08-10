@@ -56,6 +56,138 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 }
 
 
+BOOL DirectoryExists(LPCTSTR szPath)
+{
+	DWORD dwAttrib = GetFileAttributes(szPath);
+
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+		(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+INT ReadDriveList(HWND hWnd, TCHAR text[])
+{
+
+	INT n;
+	INT i = 0;
+	//BOOL Flag;
+	static DWORD prev_dr = 0;
+	WCHAR path[5] = L" :\\\0";
+
+	DWORD dr = GetLogicalDrives(); // функция возвращает битовую маску
+
+	if (dr == prev_dr) return 0;
+
+	for (int x = 0; x < 26; x++) // проходимся циклом по битам
+	{
+		n = ((dr >> x) & 1); // узнаём значение текущего бита
+		if (n) // если единица - диск с номером x есть
+		{
+
+			//MessageBox(hWnd, L"1", L"", 0);
+
+			WCHAR dl = ('A' + x); // получаем литеру диска
+			path[0] = dl;
+
+			WCHAR out[50] = L"\0";
+
+			//MessageBox(hWnd, path, L"", 0);
+
+			//_itow_s(sec, text, 10);
+			text[i] = dl;
+			// здесь узнаём готово ли устройство
+			/*
+			WORD OldErrorMode;
+			OldErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS); // убираем показ ошибок
+			BOOL ready = DirectoryExists(path); // пытаемcя открыть корневую директорию
+			SetErrorMode(OldErrorMode); // восстанавливаем старый режим показа ошибок
+			*/
+			/*
+
+			if (ready)
+			{
+			*/
+				UINT drive_type = GetDriveType(path); // узнаём тип диска
+
+				i++;
+				text[i] = drive_type + '0';
+				i++;
+				text[i] = '\0';
+				/*
+				out += L"\nТип диска: ";
+				if (drive_type == DRIVE_REMOVABLE) out += L"REMOVABLE";
+				else if (drive_type == DRIVE_FIXED)     out += L"FIXED";
+				else if (drive_type == DRIVE_REMOTE)   out += L"REMOTE";
+				else if (drive_type == DRIVE_CDROM)     out += L"CD-ROM";
+				else if (drive_type == DRIVE_RAMDISK)   out += L"RAMDISK";
+				else out += L"НЕИЗВЕСТНЫЙ_ТИП\n";
+
+				// если это HDD - заприашиваем информацию о нем
+				if (drive_type == DRIVE_FIXED)
+				{
+					unsigned __int64 FreeBytesAvailable;
+					unsigned __int64 TotalNumberOfBytes;
+					unsigned __int64 TotalNumberOfFreeBytes;
+					char drive_label[30];
+					char drive_fat[30];
+					DWORD drive_sn;
+					DWORD drive_name_size = sizeof(drive_label);
+
+					// получаем данные о размерах
+					Flag = ::GetDiskFreeSpaceEx(path.c_str(),
+						(PULARGE_INTEGER)&FreeBytesAvailable,
+						(PULARGE_INTEGER)&TotalNumberOfBytes,
+						(PULARGE_INTEGER)&TotalNumberOfFreeBytes
+						);
+					if (Flag)
+					{
+						out += "\nСвободно на диске: " + AnsiString(TotalNumberOfFreeBytes) + "\n";
+						out += "Всего на диске: " + AnsiString(TotalNumberOfBytes) + "\n";
+					}
+					else
+					{
+						out += "Ошибка в GetDiskFreeSpaceEx\n";
+					}
+
+					// получаем метку, серинийный номер и пр.
+					Flag = GetVolumeInformation(path.c_str(),
+						drive_label,
+						sizeof(drive_label),
+						&drive_sn,
+						&drive_name_size,
+						NULL,
+						drive_fat,
+						sizeof(drive_fat)
+						);
+					if (Flag)
+					{
+						out += "\nМетка тома: " + AnsiString(drive_label) + "\n";
+						out += "Сер.номер: " + AnsiString(drive_sn) + "\n";
+						out += "Файловая система: " + AnsiString(drive_fat) + "\n";
+					}
+					else
+					{
+						out += "Ошибка в GetVolumeInformation\n";
+					}
+				}
+				*/
+
+
+			/*
+			}
+			else
+			{
+				out += "НЕ ГОТОВ";
+			}
+			ShowMessage(out);
+			*/
+		}
+	}
+	//for (; i >= 0; i--) text[i] = path[i];
+
+	InvalidateRect(hWnd, NULL, TRUE);
+	prev_dr = dr;
+	return 1;
+}
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -96,7 +228,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
-   HWND hBtn1;
+   HWND hButnSettings;
 
    hInst = hInstance; // Store instance handle in our global variable
 
@@ -104,10 +236,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
 
-   hBtn1 = CreateWindow(L"button", L"Settings", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+   hButnSettings = CreateWindow(L"button", L"Settings", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 	   300, 10, 80, 30, hWnd, (HMENU)IDM_SETTINGS, hInstance, NULL);
 
-   if (!hBtn1)
+   if (!hButnSettings)
    {
 	   return FALSE;
    }
@@ -136,7 +268,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	RECT rect; // стр-ра, определяющая размер клиентской области
 	COLORREF colorText = RGB(255, 0, 0); // задаём цвет текста
 	static int sec = 0;
-	static TCHAR greeting[10];
+	static WCHAR greeting[100];
 	static char text[2] = { ' ', '\0' };
 
 
@@ -147,6 +279,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		SetTimer(hWnd, 1, 1000, NULL);
 		//...
+
+		ReadDriveList(hWnd, greeting);
+
 		SetForegroundWindow(hWnd);
 		break;
 
@@ -209,8 +344,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_TIMER:
 		sec++;
-		_itow_s(sec, greeting, 10);
-		InvalidateRect(hWnd, NULL, TRUE);
+		//_itow_s(sec, greeting, 10);
+		//InvalidateRect(hWnd, NULL, TRUE);
 		break;
 
 	case WM_DESTROY:
