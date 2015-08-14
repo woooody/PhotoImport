@@ -5,29 +5,57 @@
 #include "PhotoImport.h"
 
 #define MAX_LOADSTRING 100
+#define MAX_PATH_STRING 256
+
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+T_DRIVE drives[26];
+WCHAR SettingsFileName[MAX_PATH_STRING];
+
+//DEBUG variables
+BOOL f1, f2;
+DWORD i0, i1, i2;
+WCHAR currentpath[100];
+
+//Variables to be saved
+BOOL stAutoUpdate = FALSE;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+UINT				ReadSettings();
+UINT				WriteSettings();
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPTSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+	_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPTSTR    lpCmdLine,
+	_In_ int       nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
- 	// TODO: Place code here.
+	// TODO: Place code here.
 	MSG msg;
 	HACCEL hAccelTable;
+	DWORD SettingsFileNameLength;
+
+	// Clear drives list on startup
+	memset(drives, 0, sizeof(drives));
+
+	SettingsFileNameLength = GetModuleFileName(NULL, SettingsFileName, MAX_PATH_STRING);
+	if (SettingsFileNameLength > 5)
+	{
+		// Change extension to .ini
+		SettingsFileName[SettingsFileNameLength - 1] = 'i';
+		SettingsFileName[SettingsFileNameLength - 2] = 'n';
+		SettingsFileName[SettingsFileNameLength - 3] = 'i';
+		ReadSettings();
+	}
 
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -64,14 +92,52 @@ BOOL DirectoryExists(LPCTSTR szPath)
 		(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
+UINT ReadSettings()
+{
+	UINT OK = 1;
+	WCHAR ReadParam[MAX_LOADSTRING];
+
+	// Global/AutoUpdate
+	OK *= GetPrivateProfileString(
+				TEXT("Global"),
+				TEXT("AutoUpdate"),
+				TEXT("0"),
+				ReadParam,
+				MAX_LOADSTRING,
+				SettingsFileName
+		);
+	stAutoUpdate = (ReadParam[0] == '0' ? FALSE : TRUE);
+
+	return OK;
+}
+
+
+UINT WriteSettings()
+{
+	UINT OK = 1;
+	
+	// Global/AutoUpdate
+	OK *= WritePrivateProfileString(
+				TEXT("Global"),
+				TEXT("AutoUpdate"),
+				stAutoUpdate ? TEXT("1") : TEXT("0"),
+				SettingsFileName);
+
+
+	return OK;
+}
+
+
+
 INT ReadDriveList(HWND hWnd, TCHAR text[])
 {
 
 	INT n;
 	INT i = 0;
-	//BOOL Flag;
+	BOOL prev_avail = FALSE;
 	static DWORD prev_dr = 0;
-	WCHAR path[5] = L" :\\\0";
+	WCHAR path[] = L" :\\";
+	T_DRIVE current_drive;
 
 	DWORD dr = GetLogicalDrives(); // функция возвращает битовую маску
 
@@ -80,20 +146,14 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 	for (int x = 0; x < 26; x++) // проходимся циклом по битам
 	{
 		n = ((dr >> x) & 1); // узнаём значение текущего бита
+
+		prev_avail = drives[x].avail;
+		drives[x].avail = (BOOL)n;
+
 		if (n) // если единица - диск с номером x есть
 		{
-
-			//MessageBox(hWnd, L"1", L"", 0);
-
-			WCHAR dl = ('A' + x); // получаем литеру диска
-			path[0] = dl;
-
-			WCHAR out[50] = L"\0";
-
-			//MessageBox(hWnd, path, L"", 0);
-
-			//_itow_s(sec, text, 10);
-			text[i] = dl;
+			current_drive.avail = TRUE;
+			path[0] = ('A' + x); // получаем литеру диска
 			// здесь узнаём готово ли устройство
 			/*
 			WORD OldErrorMode;
@@ -101,15 +161,26 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 			BOOL ready = DirectoryExists(path); // пытаемcя открыть корневую директорию
 			SetErrorMode(OldErrorMode); // восстанавливаем старый режим показа ошибок
 			*/
+			current_drive.drive_type = GetDriveType(path); // узнаём тип диска
+
+			//MessageBox(hWnd, L"1", L"", 0);
+
+			//path[0] = dl;
+
+			//WCHAR out[50] = L"\0";
+
+			//MessageBox(hWnd, path, L"", 0);
+
+			//_itow_s(sec, text, 10);
+//			text[i] = dl;
 			/*
 
 			if (ready)
 			{
 			*/
-				UINT drive_type = GetDriveType(path); // узнаём тип диска
 
 				i++;
-				text[i] = drive_type + '0';
+				text[i] = current_drive.drive_type + '0';
 				i++;
 				text[i] = '\0';
 				/*
@@ -215,6 +286,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassEx(&wcex);
 }
 
+
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -229,15 +301,32 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
    HWND hButnSettings;
+   HWND hedit;
+   HWND hCombo;
 
    hInst = hInstance; // Store instance handle in our global variable
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
-
    hButnSettings = CreateWindow(L"button", L"Settings", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 	   300, 10, 80, 30, hWnd, (HMENU)IDM_SETTINGS, hInstance, NULL);
+   
+   hedit = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT, 30, 40, 300, 30, hWnd, NULL, hInstance, NULL);
+   hCombo = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, 10, 80, 250, 500, hWnd, 0, hInstance, 0);
+
+   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T1");
+   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T2");
+   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T3");
+
+   //SendMessage(hCombo, CB_SELECTSTRING, 0, (LPARAM)L"T1");
+   SendMessage(hCombo, CB_SETCURSEL, 0, NULL);
+
+   
+   SendMessage(hCombo, CB_DELETESTRING, 1, NULL);
+   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T0");
+
+   
 
    if (!hButnSettings)
    {
@@ -299,6 +388,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
+			WriteSettings();
 			DestroyWindow(hWnd);
 			break;
 		default:
@@ -361,10 +451,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
+
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message)
 	{
 	case WM_INITDIALOG:
+		CheckDlgButton(hDlg, IDC_AUTOUPDATE, (stAutoUpdate ? BST_CHECKED : BST_UNCHECKED));
 		return (INT_PTR)TRUE;
 
 	case WM_COMMAND:
@@ -373,6 +465,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			EndDialog(hDlg, LOWORD(wParam));
 			return (INT_PTR)TRUE;
 		}
+		else if (LOWORD(wParam) == IDC_AUTOUPDATE)
+		{
+			stAutoUpdate = (IsDlgButtonChecked(hDlg, IDC_AUTOUPDATE) == BST_CHECKED);
+			return (INT_PTR)TRUE;
+		}
+
 		break;
 	}
 	return (INT_PTR)FALSE;

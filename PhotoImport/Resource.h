@@ -11,10 +11,15 @@
 #define IDM_ABOUT				104
 #define IDM_EXIT				105
 #define IDM_SETTINGS			106
-#define IDI_PHOTOIMPORT			107
-#define IDI_SMALL				108
-#define IDC_PHOTOIMPORT			109
+#define IDM_SD_STORAGE			107
+#define IDM_SD_LOCAL			108
+#define IDM_LOCAL_STORAGE		109
+#define IDI_PHOTOIMPORT			110
+#define IDI_SMALL				111
+#define IDC_PHOTOIMPORT			112
 #define IDC_MYICON				2
+#define IDC_AUTOUPDATE			201
+
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
 #endif
