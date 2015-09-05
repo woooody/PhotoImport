@@ -4,9 +4,11 @@
 #include "stdafx.h"
 #include "PhotoImport.h"
 
-#define MAX_LOADSTRING 100
-#define MAX_PATH_STRING 256
-
+//Consts
+const WCHAR SourceDrvStr[] = L"Source drive";
+const WCHAR LocalDrvStr[] = L"Local drive";
+const WCHAR StorageExtStr[] = L"Extension";
+const WCHAR StoragePathStr[] = L"Storage Path";
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
@@ -14,14 +16,32 @@ TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 T_DRIVE drives[26];
 WCHAR SettingsFileName[MAX_PATH_STRING];
+UINT WorkingAreaY = 0;
 
-//DEBUG variables
+// Window items
+HWND hButnSettings;
+HWND hButnSrcToStorage;
+HWND hButnSrcToLocal;
+HWND hButnLocalToStorage;
+HWND hEditStorageExt[MAX_STORAGE_PATHS];
+HWND hEditStoragePath[MAX_STORAGE_PATHS];
+HWND hComboSource;
+HWND hComboLocal;
+
+// Variables to be saved to .ini
+BOOL stAutoUpdate = FALSE;
+UINT stStoragePaths = 3; 
+T_STORAGE_PATH stStoragePath[MAX_STORAGE_PATHS];
+WCHAR stSourcePath[MAX_PATH_STRING];
+WCHAR stLocalPath[MAX_PATH_STRING];
+WCHAR stSourceDriveFilter[8];  // each byte enables/disables drive type 
+WCHAR stLocalDriveFilter[8];   // DRIVE_REMOVABLE, DRIVE_FIXED, etc.
+
+// DEBUG variables
 BOOL f1, f2;
 DWORD i0, i1, i2;
-WCHAR currentpath[100];
+WCHAR currentpath[MAX_PATH_STRING];
 
-//Variables to be saved
-BOOL stAutoUpdate = FALSE;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -96,6 +116,8 @@ UINT ReadSettings()
 {
 	UINT OK = 1;
 	WCHAR ReadParam[MAX_LOADSTRING];
+	WCHAR ParamName[MAX_LOADSTRING];
+	UINT i;
 
 	// Global/AutoUpdate
 	OK *= GetPrivateProfileString(
@@ -108,6 +130,94 @@ UINT ReadSettings()
 		);
 	stAutoUpdate = (ReadParam[0] == '0' ? FALSE : TRUE);
 
+	//Storage/StoragePaths
+	OK *= GetPrivateProfileString(
+		TEXT("Storage"),
+		TEXT("StoragePaths"),
+		TEXT("3"),
+		ReadParam,
+		MAX_LOADSTRING,
+		SettingsFileName
+		);
+
+	stStoragePaths = _wtol(ReadParam);
+	if (stStoragePaths < 1)
+	{
+		stStoragePaths = 3;
+	}
+
+	if (stStoragePaths > MAX_STORAGE_PATHS)
+	{
+		stStoragePaths = MAX_STORAGE_PATHS;
+	}
+
+	//Storage/StoragePath[]
+	for (i = 0; i < stStoragePaths; i++)
+	{
+		//ext1-2-3...
+		wsprintf(ParamName, L"ext%d", i + 1);
+		OK *= GetPrivateProfileString(
+			TEXT("Storage"),
+			ParamName,
+			TEXT(""),
+			stStoragePath[i].ext,
+			MAX_LOADSTRING,
+			SettingsFileName
+			);
+
+		//path1-2-3...
+		wsprintf(ParamName, L"path%d", i + 1);
+		OK *= GetPrivateProfileString(
+			TEXT("Storage"),
+			ParamName,
+			TEXT(""),
+			stStoragePath[i].path,
+			MAX_LOADSTRING,
+			SettingsFileName
+			);
+	}
+
+
+	//SourceLocal/SourceDrive
+	OK *= GetPrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("SourcePath"),
+		TEXT("F:\\"),
+		stSourcePath,
+		MAX_PATH_STRING,
+		SettingsFileName
+		);
+
+	//SourceLocal/LocalPath
+	OK *= GetPrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("LocalPath"),
+		TEXT("D:\\PhotoImport"),
+		stLocalPath,
+		MAX_PATH_STRING,
+		SettingsFileName
+		);
+
+	//SourceLocal/SourceDriveFilter
+	OK *= GetPrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("SourceDrvFilter"),
+		TEXT("001000"),
+		stSourceDriveFilter,
+		7,
+		SettingsFileName
+		);
+
+	//SourceLocal/SourcePath
+	OK *= GetPrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("LocalDrvFilter"),
+		TEXT("001100"),
+		stLocalDriveFilter,
+		7,
+		SettingsFileName
+		);
+
 	return OK;
 }
 
@@ -115,7 +225,10 @@ UINT ReadSettings()
 UINT WriteSettings()
 {
 	UINT OK = 1;
-	
+	WCHAR WriteParam[MAX_LOADSTRING];
+	WCHAR ParamName[MAX_LOADSTRING];
+	UINT i;
+
 	// Global/AutoUpdate
 	OK *= WritePrivateProfileString(
 				TEXT("Global"),
@@ -123,8 +236,70 @@ UINT WriteSettings()
 				stAutoUpdate ? TEXT("1") : TEXT("0"),
 				SettingsFileName);
 
+	OK *= _ltow_s(stStoragePaths, WriteParam, MAX_LOADSTRING, 10);
+	OK *= WritePrivateProfileString(
+		TEXT("Storage"),
+		TEXT("StoragePaths"),
+		WriteParam,
+		SettingsFileName
+		);
+
+	//Storage/StoragePath[]
+	for (i = 0; i < stStoragePaths; i++)
+	{
+		//ext1-2-3...
+		wsprintf(ParamName, L"ext%d", i + 1);
+		OK *= WritePrivateProfileString(
+			TEXT("Storage"),
+			ParamName,
+			stStoragePath[i].ext,
+			SettingsFileName
+			);
+
+		//path1-2-3...
+		wsprintf(ParamName, L"path%d", i + 1);
+		OK *= WritePrivateProfileString(
+			TEXT("Storage"),
+			ParamName,
+			stStoragePath[i].path,
+			SettingsFileName
+			);
+	}
+
+	//SourceLocal/SourcePath
+	OK *= WritePrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("SourcePath"),
+		stSourcePath,
+		SettingsFileName
+		);
+
+	//SourceLocal/LocalPath
+	OK *= WritePrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("LocalPath"),
+		stLocalPath,
+		SettingsFileName
+		);
+
+	//SourceLocal/SourceDriveFilter
+	OK *= WritePrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("SourceDrvFilter"),
+		stSourceDriveFilter,
+		SettingsFileName
+		);
+
+	//SourceLocal/LocalDriveFilter
+	OK *= WritePrivateProfileString(
+		TEXT("SourceLocal"),
+		TEXT("LocalDrvFilter"),
+		stLocalDriveFilter,
+		SettingsFileName
+		);
 
 	return OK;
+
 }
 
 
@@ -134,10 +309,13 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 
 	INT n;
 	INT i = 0;
+	BOOL Flag;
 	BOOL prev_avail = FALSE;
 	static DWORD prev_dr = 0;
 	WCHAR path[] = L" :\\";
-	T_DRIVE current_drive;
+	WCHAR drive_fat[30];
+	ULARGE_INTEGER NumFreeBytes, FreeBytesAvail, TotalBytes;
+	DWORD drive_sn, drive_name_size;
 
 	DWORD dr = GetLogicalDrives(); // функция возвращает битовую маску
 
@@ -148,11 +326,10 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 		n = ((dr >> x) & 1); // узнаём значение текущего бита
 
 		prev_avail = drives[x].avail;
-		drives[x].avail = (BOOL)n;
+		drives[x].avail = FALSE;
 
-		if (n) // если единица - диск с номером x есть
+		if (!prev_avail && n) // if new drive detected
 		{
-			current_drive.avail = TRUE;
 			path[0] = ('A' + x); // получаем литеру диска
 			// здесь узнаём готово ли устройство
 			/*
@@ -161,99 +338,56 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 			BOOL ready = DirectoryExists(path); // пытаемcя открыть корневую директорию
 			SetErrorMode(OldErrorMode); // восстанавливаем старый режим показа ошибок
 			*/
-			current_drive.drive_type = GetDriveType(path); // узнаём тип диска
+			drives[x].drive_type = GetDriveType(path); // узнаём тип диска
+			
+			Flag = GetDiskFreeSpaceEx(path, 
+				&FreeBytesAvail,
+				&TotalBytes,
+				&NumFreeBytes
+				);
 
-			//MessageBox(hWnd, L"1", L"", 0);
+			Flag &= GetVolumeInformation(path,
+				drives[x].label,
+				sizeof(drives[x].label),
+				&drive_sn,
+				&drive_name_size,
+				NULL,
+				drive_fat,
+				sizeof(drive_fat)
+				);
 
-			//path[0] = dl;
-
-			//WCHAR out[50] = L"\0";
-
-			//MessageBox(hWnd, path, L"", 0);
-
-			//_itow_s(sec, text, 10);
-//			text[i] = dl;
-			/*
-
-			if (ready)
+			if (Flag)
 			{
-			*/
+				drives[x].avail = TRUE;
 
-				i++;
-				text[i] = current_drive.drive_type + '0';
-				i++;
-				text[i] = '\0';
-				/*
-				out += L"\nТип диска: ";
-				if (drive_type == DRIVE_REMOVABLE) out += L"REMOVABLE";
-				else if (drive_type == DRIVE_FIXED)     out += L"FIXED";
-				else if (drive_type == DRIVE_REMOTE)   out += L"REMOTE";
-				else if (drive_type == DRIVE_CDROM)     out += L"CD-ROM";
-				else if (drive_type == DRIVE_RAMDISK)   out += L"RAMDISK";
-				else out += L"НЕИЗВЕСТНЫЙ_ТИП\n";
+				drives[x].totalMB = (UINT)((TotalBytes.QuadPart / 1024) / 1024);
+				drives[x].freeMB = (UINT)((FreeBytesAvail.QuadPart / 1024) / 1024);
 
-				// если это HDD - заприашиваем информацию о нем
-				if (drive_type == DRIVE_FIXED)
-				{
-					unsigned __int64 FreeBytesAvailable;
-					unsigned __int64 TotalNumberOfBytes;
-					unsigned __int64 TotalNumberOfFreeBytes;
-					char drive_label[30];
-					char drive_fat[30];
-					DWORD drive_sn;
-					DWORD drive_name_size = sizeof(drive_label);
+				i += wsprintf(text + i, L"%S:[%s](%d.%dGb) ", 
+					path, 
+					drives[x].label,
+					drives[x].totalMB / 1000,
+					(drives[x].totalMB % 1000) / 10
+					);
 
-					// получаем данные о размерах
-					Flag = ::GetDiskFreeSpaceEx(path.c_str(),
-						(PULARGE_INTEGER)&FreeBytesAvailable,
-						(PULARGE_INTEGER)&TotalNumberOfBytes,
-						(PULARGE_INTEGER)&TotalNumberOfFreeBytes
-						);
-					if (Flag)
-					{
-						out += "\nСвободно на диске: " + AnsiString(TotalNumberOfFreeBytes) + "\n";
-						out += "Всего на диске: " + AnsiString(TotalNumberOfBytes) + "\n";
-					}
-					else
-					{
-						out += "Ошибка в GetDiskFreeSpaceEx\n";
-					}
+				wsprintf(drives[x].cb_text, L"%S:[%s](%d.%dGb) ",
+					path,
+					drives[x].label,
+					drives[x].totalMB / 1000,
+					(drives[x].totalMB % 1000) / 10
+					);
 
-					// получаем метку, серинийный номер и пр.
-					Flag = GetVolumeInformation(path.c_str(),
-						drive_label,
-						sizeof(drive_label),
-						&drive_sn,
-						&drive_name_size,
-						NULL,
-						drive_fat,
-						sizeof(drive_fat)
-						);
-					if (Flag)
-					{
-						out += "\nМетка тома: " + AnsiString(drive_label) + "\n";
-						out += "Сер.номер: " + AnsiString(drive_sn) + "\n";
-						out += "Файловая система: " + AnsiString(drive_fat) + "\n";
-					}
-					else
-					{
-						out += "Ошибка в GetVolumeInformation\n";
-					}
-				}
-				*/
-
-
-			/*
 			}
-			else
-			{
-				out += "НЕ ГОТОВ";
-			}
-			ShowMessage(out);
-			*/
+
+
 		}
+		else if (prev_avail && n) //drive lost
+		{
+		
+		
+		}
+
 	}
-	//for (; i >= 0; i--) text[i] = path[i];
 
 	InvalidateRect(hWnd, NULL, TRUE);
 	prev_dr = dr;
@@ -300,20 +434,103 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
-   HWND hButnSettings;
+
    HWND hedit;
    HWND hCombo;
 
+
+   UINT i, j, k;
+
+   i = IDS_ITEMS_START_X;
+   j = IDS_ITEMS_START_Y;
+
    hInst = hInstance; // Store instance handle in our global variable
 
+   // Create main window
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
+   // Buttons
+   // first line
+   hButnSrcToStorage = CreateWindow(L"button", L"Source ==>> Storage", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   i, j, 300 + IDS_ITEMS_STEP_X, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_SRC_STORAGE, hInstance, NULL);
+   i += 300;
+   i += IDS_ITEMS_STEP_X + IDS_ITEMS_STEP_X;
+
    hButnSettings = CreateWindow(L"button", L"Settings", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-	   300, 10, 80, 30, hWnd, (HMENU)IDM_SETTINGS, hInstance, NULL);
+	   i, j, 80, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_SETTINGS, hInstance, NULL);
+
+   i = IDS_ITEMS_START_X;
+   j += IDS_ITEMS_SIZE_Y;
+   j += IDS_ITEMS_STEP_Y;
+
+   // second line
+   hButnSrcToStorage = CreateWindow(L"button", L"Source => Local", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_SRC_LOCAL, hInstance, NULL);
+   i += 150;
+   i += IDS_ITEMS_STEP_X;
+
+   hButnSrcToStorage = CreateWindow(L"button", L"Local => Storage", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_LOCAL_STORAGE, hInstance, NULL);
+   i += 150;
+   i += IDS_ITEMS_STEP_X;
+
+/*
+   // plus and minus buttons
+   hButnSrcToStorage = CreateWindow(L"button", L"+", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   i, j, 35, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_INC_STORAGE, hInstance, NULL);
+   i += 35;
+   i += IDS_ITEMS_STEP_X;
+
+   hButnSrcToStorage = CreateWindow(L"button", L"-", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+	   i, j, 35, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_DEC_STORAGE, hInstance, NULL);
+*/
+   j += IDS_ITEMS_SIZE_Y;
+   j += IDS_ITEMS_STEP_Y;
+   WorkingAreaY = j;
+
+   // Left side
+   j = WorkingAreaY;
+   i = IDS_ITEMS_START_X;
+
+   j += IDS_ITEMS_SIZE_Y;
+//   j += IDS_ITEMS_STEP_Y;
+
+   hComboSource = CreateWindow(L"COMBOBOX", L"", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, 0, hInstance, 0);
+
+   j += IDS_ITEMS_SIZE_Y;
+//   j += IDS_ITEMS_STEP_Y;
+   j += IDS_ITEMS_SIZE_Y;
+   j += IDS_ITEMS_STEP_Y;
+
+   hComboLocal = CreateWindow(L"COMBOBOX", L"", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, 0, hInstance, 0);
+
+   // Right side
+   j = WorkingAreaY;
+   j += IDS_ITEMS_SIZE_Y;
+   //   j += IDS_ITEMS_STEP_Y;
+   i += 150;
+   i += IDS_ITEMS_STEP_X;
+
+   for (k = 0; k < stStoragePaths; k++)
+   {
+	   hEditStorageExt[k] = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, i, j, 70, IDS_ITEMS_SIZE_Y, hWnd, NULL, hInstance, NULL);
+	   hEditStoragePath[k] = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, i + 70 + IDS_ITEMS_STEP_X, j, 160, IDS_ITEMS_SIZE_Y, hWnd, NULL, hInstance, NULL);
+	   
+	   SendMessage(hEditStorageExt[k], WM_SETTEXT, NULL, (LPARAM)stStoragePath[k].ext);
+	   SendMessage(hEditStoragePath[k], WM_SETTEXT, NULL, (LPARAM)stStoragePath[k].path);
+
+	   j += IDS_ITEMS_SIZE_Y;
+	   j += IDS_ITEMS_STEP_Y;
+   }
+
+   //hEditStorageExt[MAX_STORAGE_PATHS];
+   //hEditStoragePath[MAX_STORAGE_PATHS];
+
+//   IDS_ITEMS_STEP_Y
    
-   hedit = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT, 30, 40, 300, 30, hWnd, NULL, hInstance, NULL);
-   hCombo = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, 10, 80, 250, 500, hWnd, 0, hInstance, 0);
+   hedit = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT, 30, 240, 30, 230, hWnd, NULL, hInstance, NULL);
+   hCombo = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, 10, 280, 250, 500, hWnd, 0, hInstance, 0);
 
    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T1");
    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T2");
@@ -328,7 +545,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    
 
-   if (!hButnSettings)
+   if (!hWnd)
    {
 	   return FALSE;
    }
@@ -357,19 +574,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	RECT rect; // стр-ра, определяющая размер клиентской области
 	COLORREF colorText = RGB(255, 0, 0); // задаём цвет текста
 	static int sec = 0;
-	static WCHAR greeting[100];
+	static WCHAR greeting[255];
 	static char text[2] = { ' ', '\0' };
+	UINT i, j;
 
 
 	switch (message)
 	{
 	case WM_CREATE:
 		greeting[0] = '\0';
+		ReadDriveList(hWnd, greeting);
 
 		SetTimer(hWnd, 1, 1000, NULL);
 		//...
-
-		ReadDriveList(hWnd, greeting);
 
 		SetForegroundWindow(hWnd);
 		break;
@@ -388,7 +605,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
-			WriteSettings();
+			//WriteSettings();
 			DestroyWindow(hWnd);
 			break;
 		default:
@@ -402,8 +619,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// For this introduction, we just print out "Hello, World!"
 		// in the top left corner.
 		
+		j = WorkingAreaY;
+		i = IDS_ITEMS_START_X;
+		TextOut(hdc, i, j, SourceDrvStr, _tcslen(SourceDrvStr));
+		j += IDS_ITEMS_SIZE_Y;
+		//   j += IDS_ITEMS_STEP_Y;
+		j += IDS_ITEMS_SIZE_Y;
+		j += IDS_ITEMS_STEP_Y;
+
+		TextOut(hdc, i, j, LocalDrvStr, _tcslen(LocalDrvStr));
+
+		j = WorkingAreaY;
+		i += 150;
+		i += IDS_ITEMS_STEP_X;
+
+		TextOut(hdc, i, j, StorageExtStr, _tcslen(StorageExtStr));
+
+		i += 70;
+		i += IDS_ITEMS_STEP_X;
+
+		TextOut(hdc, i, j, StoragePathStr, _tcslen(StoragePathStr));
+
 		TextOut(hdc,
-			10, 10,
+			10, 210,
 			greeting, _tcslen(greeting));
 		// End application-specific layout section.
 		
@@ -434,12 +672,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_TIMER:
 		sec++;
+		ReadDriveList(hWnd, greeting);
+
 		//_itow_s(sec, greeting, 10);
 		//InvalidateRect(hWnd, NULL, TRUE);
 		break;
 
 	case WM_DESTROY:
-//		MessageBox(NULL, greeting, L"Время работы программы (сек.):", MB_ICONASTERISK | MB_OK);
+		//Write settings
+		WriteSettings();
+		//		MessageBox(NULL, greeting, L"Время работы программы (сек.):", MB_ICONASTERISK | MB_OK);
 		PostQuitMessage(0);
 		break;
 	default:

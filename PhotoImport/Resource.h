@@ -11,12 +11,14 @@
 #define IDM_ABOUT				104
 #define IDM_EXIT				105
 #define IDM_SETTINGS			106
-#define IDM_SD_STORAGE			107
-#define IDM_SD_LOCAL			108
+#define IDM_SRC_STORAGE			107
+#define IDM_SRC_LOCAL			108
 #define IDM_LOCAL_STORAGE		109
 #define IDI_PHOTOIMPORT			110
 #define IDI_SMALL				111
 #define IDC_PHOTOIMPORT			112
+#define IDM_INC_STORAGE         113
+#define IDM_DEC_STORAGE         114
 #define IDC_MYICON				2
 #define IDC_AUTOUPDATE			201
 
@@ -35,3 +37,9 @@
 #define _APS_NEXT_SYMED_VALUE		110
 #endif
 #endif
+
+#define IDS_ITEMS_START_X		10
+#define IDS_ITEMS_START_Y		10
+#define IDS_ITEMS_STEP_X		10
+#define IDS_ITEMS_STEP_Y		10
+#define IDS_ITEMS_SIZE_Y		25

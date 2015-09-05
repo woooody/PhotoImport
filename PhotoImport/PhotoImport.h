@@ -2,15 +2,22 @@
 
 #include "resource.h"
 
-#define NUM_FILE_TYPES 5
-
+#define MAX_LOADSTRING 100
+#define MAX_PATH_STRING 256
+#define MAX_STORAGE_PATHS 10
 
 struct T_DRIVE
 {
 	BOOL avail;
 	UINT drive_type;
-	ULARGE_INTEGER totalbytes;
-	ULARGE_INTEGER freebytes;
+	DWORD totalMB;
+	DWORD freeMB;
 	WCHAR label[12];
 	WCHAR cb_text[50];
+};
+
+struct T_STORAGE_PATH
+{
+	WCHAR ext[MAX_LOADSTRING];
+	WCHAR path[MAX_PATH_STRING];
 };
