@@ -44,6 +44,6 @@
 #define IDS_ITEMS_STEP_X		10
 #define IDS_ITEMS_STEP_Y		10
 #define IDS_ITEMS_SIZE_Y		25
-#define IDS_ITEMS_SIZE_LL		300
+#define IDS_ITEMS_SIZE_LL		150
 //#define IDS_ITEMS_SIZE_LR		150
 #define IDS_COMBO_SIZE          300
