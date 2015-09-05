@@ -17,6 +17,9 @@ TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 T_DRIVE drives[26];
 WCHAR SettingsFileName[MAX_PATH_STRING];
 UINT WorkingAreaY = 0;
+UINT hComboSourceNum = 0;
+UINT hComboLocalNum = 0;
+BOOL DataLocked = FALSE;
 
 // Window items
 HWND hButnSettings;
@@ -25,12 +28,14 @@ HWND hButnSrcToLocal;
 HWND hButnLocalToStorage;
 HWND hEditStorageExt[MAX_STORAGE_PATHS];
 HWND hEditStoragePath[MAX_STORAGE_PATHS];
+HWND hEditStorageBtn[MAX_STORAGE_PATHS];
 HWND hComboSource;
 HWND hComboLocal;
 
 // Variables to be saved to .ini
 BOOL stAutoUpdate = FALSE;
-UINT stStoragePaths = 3; 
+UINT stStoragePaths = 3;
+UINT stStoragePathsC;
 T_STORAGE_PATH stStoragePath[MAX_STORAGE_PATHS];
 WCHAR stSourcePath[MAX_PATH_STRING];
 WCHAR stLocalPath[MAX_PATH_STRING];
@@ -41,6 +46,9 @@ WCHAR stLocalDriveFilter[8];   // DRIVE_REMOVABLE, DRIVE_FIXED, etc.
 BOOL f1, f2;
 DWORD i0, i1, i2;
 WCHAR currentpath[MAX_PATH_STRING];
+static int sec = 0;
+static WCHAR greeting[255];
+//static char text[2] = { ' ', '\0' };
 
 
 // Forward declarations of functions included in this code module:
@@ -101,7 +109,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	return (int) msg.wParam;
-}
+
+} //_tWinMain
 
 
 BOOL DirectoryExists(LPCTSTR szPath)
@@ -110,7 +119,7 @@ BOOL DirectoryExists(LPCTSTR szPath)
 
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
 		(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
+} //DirectoryExists
 
 UINT ReadSettings()
 {
@@ -204,7 +213,7 @@ UINT ReadSettings()
 		TEXT("SourceDrvFilter"),
 		TEXT("001000"),
 		stSourceDriveFilter,
-		7,
+		sizeof(stSourceDriveFilter),
 		SettingsFileName
 		);
 
@@ -214,12 +223,13 @@ UINT ReadSettings()
 		TEXT("LocalDrvFilter"),
 		TEXT("001100"),
 		stLocalDriveFilter,
-		7,
+		sizeof(stLocalDriveFilter),
 		SettingsFileName
 		);
 
 	return OK;
-}
+
+} //ReadSettings
 
 
 UINT WriteSettings()
@@ -245,7 +255,7 @@ UINT WriteSettings()
 		);
 
 	//Storage/StoragePath[]
-	for (i = 0; i < stStoragePaths; i++)
+	for (i = 0; i < stStoragePathsC; i++)
 	{
 		//ext1-2-3...
 		wsprintf(ParamName, L"ext%d", i + 1);
@@ -300,15 +310,14 @@ UINT WriteSettings()
 
 	return OK;
 
-}
-
+} //WriteSettings
 
 
 INT ReadDriveList(HWND hWnd, TCHAR text[])
 {
 
 	INT n;
-	INT i = 0;
+	static INT i = 0;
 	BOOL Flag;
 	BOOL prev_avail = FALSE;
 	static DWORD prev_dr = 0;
@@ -316,6 +325,7 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 	WCHAR drive_fat[30];
 	ULARGE_INTEGER NumFreeBytes, FreeBytesAvail, TotalBytes;
 	DWORD drive_sn, drive_name_size;
+	LRESULT result;
 
 	DWORD dr = GetLogicalDrives(); // функци€ возвращает битовую маску
 
@@ -326,7 +336,6 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 		n = ((dr >> x) & 1); // узнаЄм значение текущего бита
 
 		prev_avail = drives[x].avail;
-		drives[x].avail = FALSE;
 
 		if (!prev_avail && n) // if new drive detected
 		{
@@ -339,7 +348,17 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 			SetErrorMode(OldErrorMode); // восстанавливаем старый режим показа ошибок
 			*/
 			drives[x].drive_type = GetDriveType(path); // узнаЄм тип диска
-			
+
+			if (drives[x].drive_type > 7)
+			{
+				continue;
+			}
+			else if ((stLocalDriveFilter[drives[x].drive_type] == L'0') &&
+				(stSourceDriveFilter[drives[x].drive_type] == L'0'))
+			{
+				continue;
+			}
+
 			Flag = GetDiskFreeSpaceEx(path, 
 				&FreeBytesAvail,
 				&TotalBytes,
@@ -363,36 +382,153 @@ INT ReadDriveList(HWND hWnd, TCHAR text[])
 				drives[x].totalMB = (UINT)((TotalBytes.QuadPart / 1024) / 1024);
 				drives[x].freeMB = (UINT)((FreeBytesAvail.QuadPart / 1024) / 1024);
 
-				i += wsprintf(text + i, L"%S:[%s](%d.%dGb) ", 
-					path, 
-					drives[x].label,
-					drives[x].totalMB / 1000,
-					(drives[x].totalMB % 1000) / 10
-					);
+				i += wsprintf(text + i, L"%S: ", path);
 
-				wsprintf(drives[x].cb_text, L"%S:[%s](%d.%dGb) ",
+				wsprintf(drives[x].cb_text, L"%S:[%s](%d.%dGb)",
 					path,
 					drives[x].label,
 					drives[x].totalMB / 1000,
 					(drives[x].totalMB % 1000) / 10
 					);
 
+				if (drives[x].drive_type <= 7)
+				{
+					if (stLocalDriveFilter[drives[x].drive_type] != L'0')
+					{
+						SendMessage(hComboLocal, CB_ADDSTRING, 0, (LPARAM)drives[x].cb_text);
+						hComboLocalNum++;
+
+						if (drives[x].cb_text[0] == stLocalPath[0])
+						{
+							SendMessage(hComboLocal, CB_SELECTSTRING, -1, (LPARAM)drives[x].cb_text);
+						}
+					}
+						
+					if (stSourceDriveFilter[drives[x].drive_type] != L'0')
+					{
+						SendMessage(hComboSource, CB_ADDSTRING, 0, (LPARAM)drives[x].cb_text);
+						hComboSourceNum++;
+
+						if (drives[x].cb_text[0] == stSourcePath[0])
+						{
+							SendMessage(hComboSource, CB_SELECTSTRING, -1, (LPARAM)drives[x].cb_text);
+						}
+					}
+				}
+				else
+				{
+					MessageBox(hWnd, L"Wrong drives[x].drive_type", L"", 0);
+				}
 			}
 
+			InvalidateRect(hWnd, NULL, TRUE);
 
 		}
-		else if (prev_avail && n) //drive lost
+		else if (prev_avail && !n) //drive lost
 		{
-		
-		
+			drives[x].avail = FALSE;
+
+			result = SendMessage(hComboLocal, CB_FINDSTRING, -1, (LPARAM)drives[x].cb_text);
+			if (result != CB_ERR)
+			{
+				SendMessage(hComboLocal, CB_DELETESTRING, result, NULL);
+			}
+			result = SendMessage(hComboSource, CB_FINDSTRING, -1, (LPARAM)drives[x].cb_text);
+			if (result != CB_ERR)
+			{
+				SendMessage(hComboSource, CB_DELETESTRING, result, NULL);
+			}
+
+			InvalidateRect(hWnd, NULL, TRUE);
 		}
 
 	}
 
-	InvalidateRect(hWnd, NULL, TRUE);
 	prev_dr = dr;
 	return 1;
-}
+
+} //ReadDriveList
+
+INT ReadFields(HWND hWnd)
+{
+	LRESULT cb_local, cb_source, result;
+	static LRESULT prev_cb_local, prev_cb_source;
+	WCHAR tempString[MAX_LOADSTRING];
+	UINT k;
+
+	if (DataLocked) 
+		return 0;
+
+	cb_local = SendMessage(hComboLocal, CB_GETCURSEL, NULL, NULL);
+	cb_source = SendMessage(hComboSource, CB_GETCURSEL, NULL, NULL);
+	
+	// Re-read local drive
+	if (cb_local != CB_ERR)
+	{
+		result = SendMessage(hComboLocal, CB_GETLBTEXT, cb_local, (LPARAM)tempString);
+		if (result != CB_ERR)
+		{
+			stLocalPath[0] = tempString[0];
+		}
+	}
+
+	// Re-read source drive
+	if (cb_source != CB_ERR)
+	{
+		result = SendMessage(hComboSource, CB_GETLBTEXT, cb_local, (LPARAM)tempString);
+		if (result != CB_ERR)
+		{
+			stSourcePath[0] = tempString[0];
+		}
+	}
+
+	// Re-read storage information
+	for (k = 0; k < stStoragePathsC; k++)
+	{
+		result = SendMessage(hEditStorageExt[k], WM_GETTEXT, sizeof(stStoragePath[k].ext), (LPARAM)stStoragePath[k].ext);
+		result = SendMessage(hEditStoragePath[k], WM_GETTEXT, sizeof(stStoragePath[k].path), (LPARAM)stStoragePath[k].path);
+	}
+
+	if ((prev_cb_local != cb_local) || (prev_cb_source != cb_source))
+	{
+		// Enable or Disable buttons
+		if ((cb_local != CB_ERR) && (cb_source != CB_ERR))
+		{
+			//enable all buttons
+			EnableWindow(hButnSrcToStorage, TRUE);
+			EnableWindow(hButnSrcToLocal, TRUE);
+			EnableWindow(hButnLocalToStorage, TRUE);
+		}
+		else if ((cb_local == CB_ERR) && (cb_source != CB_ERR))
+		{
+			//gray out buttons source->local and local->storage
+			EnableWindow(hButnSrcToLocal, FALSE);
+			EnableWindow(hButnLocalToStorage, FALSE);
+			//enable source->storage button
+			EnableWindow(hButnSrcToStorage, TRUE);
+		}
+		else if ((cb_local != CB_ERR) && (cb_source == CB_ERR))
+		{
+			//gray out buttons source->local and source->storage
+			EnableWindow(hButnSrcToStorage, FALSE);
+			EnableWindow(hButnSrcToLocal, FALSE);
+			//enable local->storage button
+			EnableWindow(hButnLocalToStorage, TRUE);
+		}
+		else //both are CB_ERR
+		{
+			//gray out all buttons
+			EnableWindow(hButnSrcToStorage, FALSE);
+			EnableWindow(hButnSrcToLocal, FALSE);
+			EnableWindow(hButnLocalToStorage, FALSE);
+		}
+	}
+
+	prev_cb_local = cb_local;
+	prev_cb_source = cb_source;
+
+	return 1;
+} //ReadFields
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -418,9 +554,41 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
 	return RegisterClassEx(&wcex);
+} //MyRegisterClass
+
+
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+
+	if (uMsg == BFFM_INITIALIZED)
+	{
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+	}
+
+	return 0;
 }
 
 
+BOOL BrowseFolder(WCHAR saved_path[])
+{
+
+	BROWSEINFO bi = { 0 };
+	bi.lpszTitle = L"Browse for folder...";
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+	bi.lpfn = BrowseCallbackProc;
+	bi.lParam = (LPARAM)saved_path;
+
+	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+
+	if (pidl != 0)
+	{
+		//get the name of the folder and put it in path
+		return SHGetPathFromIDListW(pidl, saved_path);
+		 
+	}
+
+	return FALSE;
+}
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -435,8 +603,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
 
-   HWND hedit;
-   HWND hCombo;
 
 
    UINT i, j, k;
@@ -465,12 +631,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    j += IDS_ITEMS_STEP_Y;
 
    // second line
-   hButnSrcToStorage = CreateWindow(L"button", L"Source => Local", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+   hButnSrcToLocal = CreateWindow(L"button", L"Source => Local", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 	   i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_SRC_LOCAL, hInstance, NULL);
    i += 150;
    i += IDS_ITEMS_STEP_X;
 
-   hButnSrcToStorage = CreateWindow(L"button", L"Local => Storage", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+   hButnLocalToStorage = CreateWindow(L"button", L"Local => Storage", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 	   i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)IDM_LOCAL_STORAGE, hInstance, NULL);
    i += 150;
    i += IDS_ITEMS_STEP_X;
@@ -496,27 +662,30 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    j += IDS_ITEMS_SIZE_Y;
 //   j += IDS_ITEMS_STEP_Y;
 
-   hComboSource = CreateWindow(L"COMBOBOX", L"", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, 0, hInstance, 0);
+   hComboSource = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST | CBS_HASSTRINGS, i, j, IDS_ITEMS_SIZE_LL, IDS_COMBO_SIZE, hWnd, 0, hInstance, 0);
 
    j += IDS_ITEMS_SIZE_Y;
 //   j += IDS_ITEMS_STEP_Y;
    j += IDS_ITEMS_SIZE_Y;
    j += IDS_ITEMS_STEP_Y;
 
-   hComboLocal = CreateWindow(L"COMBOBOX", L"", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, i, j, 150, IDS_ITEMS_SIZE_Y, hWnd, 0, hInstance, 0);
+   hComboLocal = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST | CBS_HASSTRINGS, i, j, IDS_ITEMS_SIZE_LL, IDS_COMBO_SIZE, hWnd, 0, hInstance, 0);
 
    // Right side
    j = WorkingAreaY;
    j += IDS_ITEMS_SIZE_Y;
    //   j += IDS_ITEMS_STEP_Y;
-   i += 150;
+   i += IDS_ITEMS_SIZE_LL;
    i += IDS_ITEMS_STEP_X;
 
-   for (k = 0; k < stStoragePaths; k++)
+   stStoragePathsC = stStoragePaths;
+
+   for (k = 0; k < stStoragePathsC; k++)
    {
 	   hEditStorageExt[k] = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, i, j, 70, IDS_ITEMS_SIZE_Y, hWnd, NULL, hInstance, NULL);
 	   hEditStoragePath[k] = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, i + 70 + IDS_ITEMS_STEP_X, j, 160, IDS_ITEMS_SIZE_Y, hWnd, NULL, hInstance, NULL);
-	   
+	   hEditStorageBtn[k] = CreateWindow(L"button", L"*", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, i + 70 + 160 + IDS_ITEMS_STEP_X * 2, j, IDS_ITEMS_SIZE_Y, IDS_ITEMS_SIZE_Y, hWnd, (HMENU)(IDM_SELECT_FOLDER + k), hInstance, NULL);
+
 	   SendMessage(hEditStorageExt[k], WM_SETTEXT, NULL, (LPARAM)stStoragePath[k].ext);
 	   SendMessage(hEditStoragePath[k], WM_SETTEXT, NULL, (LPARAM)stStoragePath[k].path);
 
@@ -524,26 +693,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	   j += IDS_ITEMS_STEP_Y;
    }
 
-   //hEditStorageExt[MAX_STORAGE_PATHS];
-   //hEditStoragePath[MAX_STORAGE_PATHS];
-
-//   IDS_ITEMS_STEP_Y
-   
-   hedit = CreateWindow(L"Edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT, 30, 240, 30, 230, hWnd, NULL, hInstance, NULL);
-   hCombo = CreateWindow(L"COMBOBOX", L"combobox", WS_CHILD | WS_VISIBLE | CBS_SORT | CBS_DROPDOWNLIST, 10, 280, 250, 500, hWnd, 0, hInstance, 0);
-
-   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T1");
-   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T2");
-   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T3");
-
-   //SendMessage(hCombo, CB_SELECTSTRING, 0, (LPARAM)L"T1");
-   SendMessage(hCombo, CB_SETCURSEL, 0, NULL);
-
-   
-   SendMessage(hCombo, CB_DELETESTRING, 1, NULL);
-   SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"T0");
-
-   
 
    if (!hWnd)
    {
@@ -554,7 +703,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    UpdateWindow(hWnd);
 
    return TRUE;
-}
+} //InitInstance
 
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
@@ -573,21 +722,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HDC hdc;
 	RECT rect; // стр-ра, определ€юща€ размер клиентской области
 	COLORREF colorText = RGB(255, 0, 0); // задаЄм цвет текста
-	static int sec = 0;
-	static WCHAR greeting[255];
-	static char text[2] = { ' ', '\0' };
-	UINT i, j;
-
+	UINT i, j, k;
+	WCHAR text[256];
 
 	switch (message)
 	{
 	case WM_CREATE:
 		greeting[0] = '\0';
-		ReadDriveList(hWnd, greeting);
+		//ReadDriveList(hWnd, greeting);
 
 		SetTimer(hWnd, 1, 1000, NULL);
-		//...
-
+		
 		SetForegroundWindow(hWnd);
 		break;
 
@@ -599,26 +744,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case IDM_SETTINGS:
+			ReadFields(hWnd);
+			//wsprintf(text, L"%d - %s", k, stStoragePath[k].path);
+			//MessageBox(hWnd, stStoragePath[k].path, text, 0);
 			MessageBox(hWnd, L"Settings", L"", 0);
 			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
-			//WriteSettings();
 			DestroyWindow(hWnd);
 			break;
 		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
+			if ((wmId >= IDM_SELECT_FOLDER) && (wmId < IDM_SELECT_FOLDER + MAX_STORAGE_PATHS))
+			{
+				k = (wmId - IDM_SELECT_FOLDER);
+				ReadFields(hWnd);
+
+				//Lock settings
+				DataLocked = TRUE;
+				if (BrowseFolder(stStoragePath[k].path))
+				{
+					SendMessage(hEditStoragePath[k], WM_SETTEXT, NULL, (LPARAM)stStoragePath[k].path);
+				}
+				//UnLock settings
+				DataLocked = FALSE;
+			}
+			else
+				return DefWindowProc(hWnd, message, wParam, lParam);
+
+			break;
 		}
-		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code here...
-		// Here your application is laid out.
-		// For this introduction, we just print out "Hello, World!"
-		// in the top left corner.
 		
+		// Print static strings
 		j = WorkingAreaY;
 		i = IDS_ITEMS_START_X;
 		TextOut(hdc, i, j, SourceDrvStr, _tcslen(SourceDrvStr));
@@ -630,7 +790,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		TextOut(hdc, i, j, LocalDrvStr, _tcslen(LocalDrvStr));
 
 		j = WorkingAreaY;
-		i += 150;
+		i += IDS_ITEMS_SIZE_LL;
 		i += IDS_ITEMS_STEP_X;
 
 		TextOut(hdc, i, j, StorageExtStr, _tcslen(StorageExtStr));
@@ -640,45 +800,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		TextOut(hdc, i, j, StoragePathStr, _tcslen(StoragePathStr));
 
+		// For DEBUG
+		// TBD
 		TextOut(hdc,
 			10, 210,
 			greeting, _tcslen(greeting));
 		// End application-specific layout section.
 		
-
+		
 		GetClientRect(hWnd, &rect); // получаем ширину и высоту области дл€ рисовани€
 		SetTextColor(hdc, colorText); // устанавливаем цвет контекстного устройства
-		DrawText(hdc, (LPCWSTR)text, -1, &rect, DT_SINGLELINE | DT_CENTER | DT_VCENTER); // рисуем текст
+		DrawText(hdc, (LPCWSTR)greeting, -1, &rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER); // рисуем текст
+		// End DEBUG
 
 		EndPaint(hWnd, &ps);
 		break;
-
-	case WM_CHAR:
-		switch (wParam)
-		{
-		case VK_HOME:case VK_END:case VK_PRIOR:
-		case VK_NEXT:case VK_LEFT:case VK_RIGHT:
-		case VK_UP:case VK_DOWN:case VK_DELETE:
-		case VK_SHIFT:case VK_SPACE:case VK_CONTROL:
-		case VK_CAPITAL:case VK_MENU:case VK_TAB:
-		case VK_BACK:case VK_RETURN: case VK_ESCAPE:
-			break;
-		default:
-			text[0] = (char)wParam;
-			InvalidateRect(hWnd, NULL, TRUE);
-			break;
-		}
-		break;
-
 	case WM_TIMER:
 		sec++;
 		ReadDriveList(hWnd, greeting);
+		ReadFields(hWnd);
 
 		//_itow_s(sec, greeting, 10);
-		//InvalidateRect(hWnd, NULL, TRUE);
+		InvalidateRect(hWnd, NULL, TRUE);
 		break;
 
 	case WM_DESTROY:
+		// Update information from fields
+		ReadFields(hWnd);
+
 		//Write settings
 		WriteSettings();
 		//		MessageBox(NULL, greeting, L"¬рем€ работы программы (сек.):", MB_ICONASTERISK | MB_OK);
@@ -688,7 +837,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
-}
+} //WndProc
 
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -716,4 +865,4 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
-}
+} //About

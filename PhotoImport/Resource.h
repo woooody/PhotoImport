@@ -19,6 +19,7 @@
 #define IDC_PHOTOIMPORT			112
 #define IDM_INC_STORAGE         113
 #define IDM_DEC_STORAGE         114
+#define IDM_SELECT_FOLDER		120 //to 130
 #define IDC_MYICON				2
 #define IDC_AUTOUPDATE			201
 
@@ -43,3 +44,6 @@
 #define IDS_ITEMS_STEP_X		10
 #define IDS_ITEMS_STEP_Y		10
 #define IDS_ITEMS_SIZE_Y		25
+#define IDS_ITEMS_SIZE_LL		300
+//#define IDS_ITEMS_SIZE_LR		150
+#define IDS_COMBO_SIZE          300

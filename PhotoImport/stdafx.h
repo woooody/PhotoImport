@@ -18,6 +18,8 @@
 #include <tchar.h>
 
 //#include <stdio.h>
+//#include <windowsx.h>
+#include <Shlobj.h>
 
 
 // TODO: reference additional headers your program requires here

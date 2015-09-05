@@ -12,12 +12,13 @@ struct T_DRIVE
 	UINT drive_type;
 	DWORD totalMB;
 	DWORD freeMB;
-	WCHAR label[12];
-	WCHAR cb_text[50];
+	WCHAR label[60];
+	WCHAR cb_text[70];
 };
 
 struct T_STORAGE_PATH
 {
 	WCHAR ext[MAX_LOADSTRING];
 	WCHAR path[MAX_PATH_STRING];
+	HWND btn;
 };
