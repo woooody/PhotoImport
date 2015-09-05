@@ -41,3 +41,19 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+*.tlog
+PhotoImport/Debug/PhotoImport.Build.CppClean.log
+*.log
+*.filters
+*.pch
+*.ipch
+*.obj
+*.vcxproj
+*.ilk
+Debug/PhotoImport.pdb
+*.sdf
+PhotoImport.opensdf
+*.idb
+PhotoImport/Debug/vc120.pdb
+*.suo
+PhotoImport.v12.suo
