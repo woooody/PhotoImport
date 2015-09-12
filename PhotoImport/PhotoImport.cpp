@@ -876,6 +876,7 @@ INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UINT i;
 	WCHAR TempString[4];
+	BOOL NeedRestart;
 
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message)
@@ -886,10 +887,10 @@ INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			CheckDlgButton(hDlg, IDM_SOURCE_DRIVES + i, (stSourceDriveFilter[i] == '1' ? BST_CHECKED : BST_UNCHECKED));
 			CheckDlgButton(hDlg, IDM_LOCAL_DRIVES + i, (stLocalDriveFilter[i] == '1' ? BST_CHECKED : BST_UNCHECKED));
 		}
-		SetDlgItemText(hDlg, IDM_SOURCE_PATH, stSourcePath+2);
+		SetDlgItemText(hDlg, IDM_SOURCE_PATH, stSourcePath + 2);
 		SetDlgItemText(hDlg, IDM_LOCAL_PATH, stLocalPath + 2);
 
-		for (i = 1; i <= 10; i++)
+		for (i = 1; i <= MAX_STORAGE_PATHS; i++)
 		{
 			_ltow_s(i, TempString, 3, 10);
 			SendDlgItemMessage(hDlg, IDM_NUM_STORAGE, CB_ADDSTRING, 0, (LPARAM)TempString);
@@ -905,8 +906,30 @@ INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		if (LOWORD(wParam) == IDOK)
 		{
 			// Save settings and exit
+			NeedRestart = FALSE;
 
-			MessageBox(hDlg, L"Need to restart program to apply changes", L"Information", 0);
+			for (i = 0; i < 7; i++)
+			{
+				stSourceDriveFilter[i] = IsDlgButtonChecked(hDlg, IDM_SOURCE_DRIVES + i) == BST_CHECKED ? '1' : '0';
+				stLocalDriveFilter[i] = IsDlgButtonChecked(hDlg, IDM_LOCAL_DRIVES + i) == BST_CHECKED ? '1' : '0';
+			}
+
+			GetDlgItemText(hDlg, IDM_SOURCE_PATH, stSourcePath + 2, MAX_PATH_STRING - 2);
+			GetDlgItemText(hDlg, IDM_LOCAL_PATH, stLocalPath + 2, MAX_PATH_STRING - 2);
+
+			i = SendDlgItemMessage(hDlg, IDM_NUM_STORAGE, CB_GETCURSEL, NULL, NULL);
+			i++;
+
+			if (i != stStoragePaths)
+			{
+				NeedRestart = TRUE;
+				stStoragePaths = i;
+			}
+
+			if (NeedRestart)
+			{
+				MessageBox(hDlg, L"Need to restart program to apply changes", L"Information", 0);
+			}
 			EndDialog(hDlg, LOWORD(wParam));
 			return (INT_PTR)TRUE;
 		}
@@ -916,12 +939,6 @@ INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			EndDialog(hDlg, LOWORD(wParam));
 			return (INT_PTR)TRUE;
 		}
-	/*	else if (LOWORD(wParam) == IDC_AUTOUPDATE)
-		{
-			stAutoUpdate = (IsDlgButtonChecked(hDlg, IDC_AUTOUPDATE) == BST_CHECKED);
-			return (INT_PTR)TRUE;
-		}
-		*/
 		break;
 	}
 	return (INT_PTR)FALSE;
