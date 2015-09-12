@@ -56,6 +56,7 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	Settings(HWND, UINT, WPARAM, LPARAM);
 UINT				ReadSettings();
 UINT				WriteSettings();
 
@@ -723,7 +724,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	RECT rect; // стр-ра, определ€юща€ размер клиентской области
 	COLORREF colorText = RGB(255, 0, 0); // задаЄм цвет текста
 	UINT i, j, k;
-	WCHAR text[256];
+//	WCHAR text[256];
 
 	switch (message)
 	{
@@ -747,7 +748,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			ReadFields(hWnd);
 			//wsprintf(text, L"%d - %s", k, stStoragePath[k].path);
 			//MessageBox(hWnd, stStoragePath[k].path, text, 0);
-			MessageBox(hWnd, L"Settings", L"", 0);
+			//MessageBox(hWnd, L"Under construction", L"Settings", 0);
+			DataLocked = TRUE;
+			DialogBox(hInst, MAKEINTRESOURCE(IDD_SETTINGS_DIALOG), hWnd, Settings);
+			DataLocked = FALSE;
 			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -866,3 +870,59 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	return (INT_PTR)FALSE;
 } //About
+
+// Message handler for settings dialog.
+INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UINT i;
+	WCHAR TempString[4];
+
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		for (i = 0; i < 7; i++)
+		{
+			CheckDlgButton(hDlg, IDM_SOURCE_DRIVES + i, (stSourceDriveFilter[i] == '1' ? BST_CHECKED : BST_UNCHECKED));
+			CheckDlgButton(hDlg, IDM_LOCAL_DRIVES + i, (stLocalDriveFilter[i] == '1' ? BST_CHECKED : BST_UNCHECKED));
+		}
+		SetDlgItemText(hDlg, IDM_SOURCE_PATH, stSourcePath+2);
+		SetDlgItemText(hDlg, IDM_LOCAL_PATH, stLocalPath + 2);
+
+		for (i = 1; i <= 10; i++)
+		{
+			_ltow_s(i, TempString, 3, 10);
+			SendDlgItemMessage(hDlg, IDM_NUM_STORAGE, CB_ADDSTRING, 0, (LPARAM)TempString);
+			if (i == stStoragePaths)
+			{
+				SendDlgItemMessage(hDlg, IDM_NUM_STORAGE, CB_SELECTSTRING, -1, (LPARAM)TempString);
+			}
+		}
+
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK)
+		{
+			// Save settings and exit
+
+			MessageBox(hDlg, L"Need to restart program to apply changes", L"Information", 0);
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		else if (LOWORD(wParam) == IDCANCEL)
+		{
+			// Exit without saving settings
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+	/*	else if (LOWORD(wParam) == IDC_AUTOUPDATE)
+		{
+			stAutoUpdate = (IsDlgButtonChecked(hDlg, IDC_AUTOUPDATE) == BST_CHECKED);
+			return (INT_PTR)TRUE;
+		}
+		*/
+		break;
+	}
+	return (INT_PTR)FALSE;
+} //Settings

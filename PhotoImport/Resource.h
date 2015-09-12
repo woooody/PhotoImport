@@ -19,7 +19,12 @@
 #define IDC_PHOTOIMPORT			112
 #define IDM_INC_STORAGE         113
 #define IDM_DEC_STORAGE         114
-#define IDM_SELECT_FOLDER		120 //to 130
+#define IDM_NUM_STORAGE         115
+#define IDM_SELECT_FOLDER		120 //to 129
+#define IDM_SOURCE_DRIVES		130 //to 136
+#define IDM_SOURCE_PATH		    139
+#define IDM_LOCAL_DRIVES		140 //to 146
+#define IDM_LOCAL_PATH		    149
 #define IDC_MYICON				2
 #define IDC_AUTOUPDATE			201
 

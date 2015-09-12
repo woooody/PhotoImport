@@ -1,0 +1,198 @@
+//Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+
+IDI_PHOTOIMPORT       ICON         "PhotoImport.ico"
+IDI_SMALL               ICON         "small.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDC_PHOTOIMPORT MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+                MENUITEM "&Settings",   IDM_SETTINGS
+                MENUITEM "E&xit",               IDM_EXIT
+        END
+        POPUP "&Transfer"
+        BEGIN
+                MENUITEM "SOURCE to STORAGE", IDM_SRC_STORAGE
+                MENUITEM "SOURCE to LOCAL", IDM_SRC_LOCAL
+                MENUITEM "LOCAL to STORAGE", IDM_LOCAL_STORAGE
+        END
+        POPUP "&Help"
+    BEGIN
+        MENUITEM "&About ...",           IDM_ABOUT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDC_PHOTOIMPORT ACCELERATORS
+BEGIN
+    "?",            IDM_ABOUT,              ASCII,  ALT
+    "/",            IDM_ABOUT,              ASCII,  ALT
+//ALT-x - exit
+        "x",                    IDM_EXIT,                               ASCII,  ALT
+        "X",                    IDM_EXIT,                               ASCII,  ALT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// About Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About PhotoImport"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "PhotoImport, Version 1.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015",IDC_STATIC,42,26,114,8
+    DEFPUSHBUTTON   "OK",IDOK,113,41,50,14,WS_GROUP
+        AUTOCHECKBOX    "Check for updates", IDC_AUTOUPDATE, 14, 41, 90, 10
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Settings Dialog
+//
+IDD_SETTINGS_DIALOG DIALOGEX 0, 0, 210, 155
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Settings"
+//FONT 8, "MS Shell Dlg"
+BEGIN
+        //ICON            IDR_MAINFRAME, IDC_STATIC, IDS_ITEMS_START_X, 10, 21, 20
+        LTEXT           "Source drives", IDC_STATIC,            10,   6, 90, 8
+        AUTOCHECKBOX    "UNKNOWN",       IDM_SOURCE_DRIVES + 0, 20,  16, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "NO_ROOT_DIR",   IDM_SOURCE_DRIVES + 1, 20,  28, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "REMOVABLE",     IDM_SOURCE_DRIVES + 2, 20,  40, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "FIXED",         IDM_SOURCE_DRIVES + 3, 20,  52, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "REMOTE",        IDM_SOURCE_DRIVES + 4, 20,  64, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "CDROM",         IDM_SOURCE_DRIVES + 5, 20,  76, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "RAMDISK",       IDM_SOURCE_DRIVES + 6, 20,  88, 80, 10, WS_TABSTOP
+        LTEXT           "Source folder", IDC_STATIC,            10, 102, 90, 8
+        EDITTEXT                         IDM_SOURCE_PATH,       10, 112, 90, 10, WS_TABSTOP
+        LTEXT           "Number of Storage paths",  IDC_STATIC, 10, 128, 120, 8
+        COMBOBOX                         IDM_NUM_STORAGE,       10, 136, 40, 150,  WS_TABSTOP | WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS
+
+        LTEXT           "Local drives",  IDC_STATIC,           110,   6, 90, 8
+        AUTOCHECKBOX    "UNKNOWN",       IDM_LOCAL_DRIVES + 0, 120,  16, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "NO_ROOT_DIR",   IDM_LOCAL_DRIVES + 1, 120,  28, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "REMOVABLE",     IDM_LOCAL_DRIVES + 2, 120,  40, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "FIXED",         IDM_LOCAL_DRIVES + 3, 120,  52, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "REMOTE",        IDM_LOCAL_DRIVES + 4, 120,  64, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "CDROM",         IDM_LOCAL_DRIVES + 5, 120,  76, 80, 10, WS_TABSTOP
+        AUTOCHECKBOX    "RAMDISK",       IDM_LOCAL_DRIVES + 6, 120,  88, 80, 10, WS_TABSTOP
+        LTEXT           "Local folder",  IDC_STATIC,           110, 102, 90, 8
+        EDITTEXT                         IDM_LOCAL_PATH,       110, 112, 90, 10, WS_TABSTOP
+        DEFPUSHBUTTON   "Cancel",        IDCANCEL,             110, 135, 40, 14, WS_TABSTOP
+        DEFPUSHBUTTON   "OK",            IDOK,                 160, 135, 40, 14, WS_TABSTOP
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 163
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+1 TEXTINCLUDE
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include ""targetver.h""\r\n"
+    "#endif\r\n"
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+   IDC_PHOTOIMPORT   "PHOTOIMPORT"
+   IDS_APP_TITLE       "PhotoImport"
+END
+
+#endif
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
