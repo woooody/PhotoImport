@@ -910,8 +910,14 @@ INT_PTR CALLBACK Settings(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 			for (i = 0; i < 7; i++)
 			{
+				TempString[0] = stSourceDriveFilter[i];
+				TempString[1] = stLocalDriveFilter[i];
 				stSourceDriveFilter[i] = IsDlgButtonChecked(hDlg, IDM_SOURCE_DRIVES + i) == BST_CHECKED ? '1' : '0';
 				stLocalDriveFilter[i] = IsDlgButtonChecked(hDlg, IDM_LOCAL_DRIVES + i) == BST_CHECKED ? '1' : '0';
+				if ((TempString[0] != stSourceDriveFilter[i]) || (TempString[1] != stLocalDriveFilter[i]))
+				{
+					NeedRestart = TRUE;
+				}
 			}
 
 			GetDlgItemText(hDlg, IDM_SOURCE_PATH, stSourcePath + 2, MAX_PATH_STRING - 2);
